@@ -126,6 +126,7 @@
 
           const cancelEdit = () => {
             td.innerText = currentValue;
+            td.focus(); // Return focus to the table cell
           };
 
           const handleBlur = () => {
