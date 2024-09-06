@@ -34,6 +34,11 @@ class GitHubClient
     paginated_get(uri) { |response| response[:body]['items'] }
   end
 
+  def get_user_details(login)
+    uri = URI("#{BASE_URL}/users/#{login}")
+    get(uri)[:body]
+  end
+
   def paginated_get(uri)
     items = []
 
@@ -104,16 +109,19 @@ client = GitHubClient.new(GITHUB_TOKEN)
 members = fetch_team_members(client, org, team_slug)
 
 CSV.open("members.csv", "w") do |csv|
-  csv << ["GitHub Login", "Access Validated", "Removed", "Issue Numbers", "Created At", "Closed At", "Access Last Approved At", "Comments"]
+  csv << ["GitHub Login", "Name", "Access Validated", "Removed", "Issue Numbers", "Created At", "Closed At", "Access Last Approved At", "Comments"]
 
   members.each do |member|
     member_login = member['login']
+    user_details = client.get_user_details(member_login)
+    member_name = user_details['name'] || 'N/A'
+
     issues = fetch_issues_for_member(client, org, repo, member_login, "Vets-api terminal")
 
     issue_numbers = issues.map { |issue| issue['number'] }.join(", ")
     created_at = issues.map { |issue| issue['created_at'] }.join(", ")
     closed_at = issues.map { |issue| issue['closed_at'] }.join(", ")
 
-    csv << [member_login, 'No', 'No', issue_numbers, created_at, closed_at, nil, nil]
+    csv << [member_login, member_name, 'No', 'No', issue_numbers, created_at, closed_at, nil, nil]
   end
 end
