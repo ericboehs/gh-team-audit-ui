@@ -10,10 +10,31 @@
       height: 100%;
       box-sizing: border-box;
     }
-    .tooltip:hover .avatar-tooltip {
-      display: block;
-      top: -2.5rem;
-      left: 2.5rem;
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      background-color: black;
+      color: #fff;
+      min-width: 110px;
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px 10px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%; /* Position the tooltip above the link */
+      left: 50%;
+      margin-left: -60px; /* Center the tooltip */
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
     }
   </style>
   <script>
@@ -82,6 +103,15 @@
         // Default to string comparison
         return v1.localeCompare(v2);
       };
+
+      document.querySelectorAll('a[title]').forEach(link => {
+        const tooltipText = link.getAttribute('title');
+        const tooltipSpan = document.createElement('span');
+        tooltipSpan.classList.add('tooltiptext');
+        tooltipSpan.innerText = tooltipText;
+        link.classList.add('tooltip');
+        link.appendChild(tooltipSpan);
+      });
 
       document.querySelectorAll('th').forEach(th => {
         // Wrap the content of th in a container with inline-flex
@@ -181,6 +211,8 @@
           input.type = inputType;
           if (inputType === 'date') {
             input.value = currentValue ? new Date(currentValue).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+          } else if (currentValue.trim() == "-") {
+            input.value = "";
           } else {
             input.value = currentValue;
           }
@@ -289,10 +321,10 @@
           return; // Allow default behavior for these elements
         }
 
-        if (event.ctrlKey && (event.key === 'j' || event.key === 'k')) {
+        if (event.ctrlKey && (event.key === 'j' || event.key === 'k' || event.key === 'p' || event.key === 'n')) {
           event.preventDefault();
           let nextRow;
-          if (event.key === 'j') {
+          if (event.key === 'j' || event.key === 'n') {
             if (current.tagName.toLowerCase() === 'th') {
               // Move from header to the first row of tbody
               nextRow = document.querySelector('tbody tr');
@@ -302,7 +334,7 @@
             while (nextRow && !nextRow.children[current.cellIndex].querySelector(focusableSelectors.join(',')) && !nextRow.children[current.cellIndex].hasAttribute('tabindex')) {
               nextRow = nextRow.nextElementSibling;
             }
-          } else if (event.key === 'k') {
+          } else if (event.key === 'k' || event.key === 'p') {
             if (current.tagName.toLowerCase() === 'td' && current.closest('tr').previousElementSibling === null) {
               // Move from first row of tbody to the header
               nextRow = document.querySelector('thead tr');
@@ -325,18 +357,18 @@
           }
         }
 
-        if (event.ctrlKey && (event.key === 'h' || event.key === 'l')) {
+        if (event.ctrlKey && (event.key === 'h' || event.key === 'l' || event.key === 'b' || event.key === 'f')) {
           event.preventDefault();
           current = document.activeElement;
           let nextCell;
 
           if (current.closest('td, th')) { // Ensure current element is within a td or th
-            if (event.key === 'l') {
+            if (event.key === 'l' || event.key === 'f') {
               nextCell = current.closest('td, th').nextElementSibling;
               while (nextCell && (!nextCell.querySelector(focusableSelectors.join(',')) && !nextCell.hasAttribute('tabindex'))) {
                 nextCell = nextCell.nextElementSibling;
               }
-            } else if (event.key === 'h') {
+            } else if (event.key === 'h' || event.key === 'b') {
               nextCell = current.closest('td, th').previousElementSibling;
               while (nextCell && (!nextCell.querySelector(focusableSelectors.join(',')) && !nextCell.hasAttribute('tabindex'))) {
                 nextCell = nextCell.previousElementSibling;
@@ -527,18 +559,13 @@
         <h1 class="text-base font-semibold leading-6 text-gray-900">Access Review Audit</h1>
       </div>
       <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-        <a href="<%= @team_url %>" target="_blank" class="flex items-center block rounded-md bg-opacity-90 bg-blue-900 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-900">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="h-6 w-6 pr-2" viewBox="0 0 16 16">
-            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8"/>
-          </svg>
-          View Team
-        </a>
+        <!-- left aligned button goes here -->
       </div>
     </div>
     <div class="mt-4 flex space-x-4">
       <div>
         <label for="user" class="block text-sm font-medium leading-6 text-gray-900">User</label>
-        <input type="text" id="user" name="user" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['user'] %>" onkeydown="navigateOnEnter(event)">
+        <input type="text" id="user" name="user" placeholder="GitHub Username" class="placeholder-gray-300 mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['user'] %>" onkeydown="navigateOnEnter(event)">
       </div>
       <div>
         <label for="access-validated" class="block text-sm font-medium leading-6 text-gray-900">Access Validated</label>
@@ -558,15 +585,26 @@
       </div>
       <div>
         <label for="issue" class="block text-sm font-medium leading-6 text-gray-900">Issue #</label>
-        <input type="text" id="issue" name="issue" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['issue'] %>" onkeydown="navigateOnEnter(event)">
+        <input type="text" id="issue" name="issue" placeholder="12345" class="placeholder-gray-300 mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['issue'] %>" onkeydown="navigateOnEnter(event)">
       </div>
       <div>
         <label for="comment" class="block text-sm font-medium leading-6 text-gray-900">Comment</label>
-        <input type="comment" id="comment" name="comment" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['comment'] %>" onkeydown="navigateOnEnter(event)">
+        <input type="comment" id="comment" name="comment" placeholder="^\s*$" class="placeholder-gray-300 mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['comment'] %>" onkeydown="navigateOnEnter(event)">
       </div>
       <div class="flex flex-col justify-end pl-6">
         <a href="/" class="text-gray-500">Clear all</a>
-      </div>  
+      </div>
+      <div class="flex-grow flex items-end justify-end pl-6">
+        <div class="text-right">
+          <% if csv_content.size != @total_count %>
+            Showing <%= csv_content.size %> of
+          <% else %>
+            Showing all 
+          <% end %>
+          <a href="<%= @team_url %>" target="_blank" title="<%= "#{@removed_count} removed" if @removed_count > 0 %>" class="bg-stone-50 underline text-blue-800">
+            <%= @total_count %> members</a>
+        </div>
+      </div>
     </div>
     <% if csv_content.empty? %>
       <div class="flex items-center justify-center">
@@ -591,7 +629,7 @@
             <th tabindex="0" class="sticky top-0 z-10 border-b border-gray-300 bg-blue-900 bg-opacity-90 px-3 py-3.5 text-left text-sm font-semibold text-gray-100">Removed</th>
             <th tabindex="0" class="sticky top-0 z-10 border-b border-gray-300 bg-blue-900 bg-opacity-90 px-3 py-3.5 text-left text-sm font-semibold text-gray-100">Issues</th>
             <th tabindex="0" class="sticky top-0 z-10 border-b border-gray-300 bg-blue-900 bg-opacity-90 px-3 py-3.5 text-left text-sm font-semibold text-gray-100">Created At</th>
-            <th tabindex="0" class="sticky top-0 z-10 border-b border-gray-300 bg-blue-900 bg-opacity-90 px-3 py-3.5 text-left text-sm font-semibold text-gray-100">Closed At</th>
+            <th tabindex="0" class="sticky top-0 z-10 border-b border-gray-300 bg-blue-900 bg-opacity-90 px-3 py-3.5 text-left text-sm font-semibold text-gray-100">Updated At</th>
             <th tabindex="0" class="sticky top-0 z-10 border-b border-gray-300 bg-blue-900 bg-opacity-90 px-3 py-3.5 text-left text-sm font-semibold text-gray-100">Access Last Changed At</th>
             <th tabindex="0" class="sticky top-0 z-10 border-b border-gray-300 bg-blue-900 bg-opacity-90 px-3 py-3.5 text-left text-sm font-semibold text-gray-100 sm:rounded-tr-lg">Comments</th>
           </tr>
@@ -631,7 +669,7 @@
               </td>
               <td class="px-3 py-5 text-sm"><span class="outline-none"><%= issue_links(row['Issue Numbers'], org, repo) %></span</td>
               <td class="px-3 py-5 text-sm"><span class="highlight-for-copy outline-none" tabindex="0"><%= format_date(row['Created At']) %></span</td>
-              <td class="px-3 py-5 text-sm"><span class="highlight-for-copy outline-none" tabindex="0"><%= format_date(row['Closed At']) %></span></td>
+              <td class="px-3 py-5 text-sm"><span class="highlight-for-copy outline-none" tabindex="0"><%= format_date(row['Updated At']) %></span></td>
               <td class="px-3 py-5 text-sm editable-date" data-field="Access Last Changed At" data-login="<%= row['GitHub Login'] %>"><%= row['Access Last Changed At'] %></td>
               <td class="px-3 py-5 text-sm editable" data-field="Comments" data-login="<%= row['GitHub Login'] %>">
                 <div style="min-width: 250px;" tabindex="0"><%= !row['Comments']&.empty? ? row['Comments'] : '-' %></div>

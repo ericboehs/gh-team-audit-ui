@@ -12,7 +12,9 @@ class App < Sinatra::Base
     repo = ENV.fetch('GH_REPOSITORY')
     team = ENV.fetch('GH_TEAM')
     @team_url = "https://github.com/orgs/#{org}/teams/#{team}"
-    csv_content = CSV.read('members.csv', headers: true)
+    csv_content = CSV.read(CSV_PATH, headers: true)
+    @total_count = csv_content.size
+    @removed_count = csv_content.select { |row| row['Removed'] == 'Yes' }.count
 
     if params['validated'] == 'true'
       csv_content = csv_content.select { |row| row['Access Validated'] == 'Yes' }
@@ -36,13 +38,21 @@ class App < Sinatra::Base
   post '/update' do
     content_type :json
     data = JSON.parse(request.body.read)
-    csv_content = CSV.read('members.csv', headers: true)
+    csv_content = CSV.read(CSV_PATH, headers: true)
 
     csv_content.each do |row|
       row[data['field']] = data['value'] if row['GitHub Login'] == data['login']
     end
 
-    CSV.open('members.csv', 'w', write_headers: true, headers: csv_content.headers) do |csv|
+    # Backup the current CSV file before writing to it
+    backup_path = "#{CSV_PATH}-#{Time.now.utc.iso8601}"
+    FileUtils.cp(CSV_PATH, backup_path)
+
+    # Remove old backups, keeping only the last 10
+    backups = Dir.glob("#{CSV_PATH}-*").sort_by { |f| File.mtime(f) }
+    FileUtils.rm(backups[0...-10]) if backups.size > 10
+
+    CSV.open(CSV_PATH, 'w', write_headers: true, headers: csv_content.headers) do |csv|
       csv_content.each do |row|
         csv << row
       end
