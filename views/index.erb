@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Access Review Audit</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    .fixed-row-height {
+      height: 45px; /* Adjust this value as needed */
+    }
+    .editable input, .editable-date input {
+      height: 100%;
+      box-sizing: border-box;
+    }
+    .tooltip:hover .avatar-tooltip {
+      display: block;
+      top: -2.5rem;
+      left: 2.5rem;
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
+
+      const comparer = (idx, asc) => (a, b) => {
+        const v1 = getCellValue(asc ? a : b, idx).trim();
+        const v2 = getCellValue(asc ? b : a, idx).trim();
+
+        if (!isNaN(Date.parse(v1)) && !isNaN(Date.parse(v2))) {
+          return new Date(v1) - new Date(v2);
+        } else if (!isNaN(v1) && !isNaN(v2)) {
+          return v1 - v2;
+        } else if (v1 === 'Yes' || v1 === 'No' || v1 === '' || v2 === 'Yes' || v2 === 'No' || v2 === '') {
+          const boolValue = val => val === 'Yes' ? 2 : val === 'No' ? 1 : 0;
+          return boolValue(v1) - boolValue(v2);
+        } else {
+          return v1.localeCompare(v2);
+        }
+      };
+
+      document.querySelectorAll('th').forEach(th => th.addEventListener('click', function() {
+        const table = th.closest('table');
+        const tbody = table.querySelector('tbody');
+        Array.from(tbody.querySelectorAll('tr'))
+          .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
+          .forEach(tr => tbody.appendChild(tr));
+
+        document.querySelectorAll('th img').forEach(img => img.remove());
+
+        const img = document.createElement('img');
+        img.src = this.asc ? 'https://unpkg.com/heroicons@1.0.6/outline/chevron-up.svg' : 'https://unpkg.com/heroicons@1.0.6/outline/chevron-down.svg';
+        img.classList.add('w-4', 'h-4', 'inline-block', 'ml-2');
+        th.appendChild(img);
+      }));
+
+      document.querySelectorAll('.toggle').forEach(button => button.addEventListener('click', function() {
+        const field = this.dataset.field;
+        const login = this.dataset.login;
+        const isEnabled = this.getAttribute('aria-checked') === 'true';
+        const newValue = isEnabled ? 'No' : 'Yes';
+
+        this.setAttribute('aria-checked', !isEnabled);
+        this.querySelector('span[aria-hidden="true"]').classList.toggle('translate-x-0');
+        this.querySelector('span[aria-hidden="true"]').classList.toggle('translate-x-5');
+        this.classList.toggle('bg-gray-200');
+        this.classList.toggle('bg-indigo-600');
+
+        fetch('/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ login: login, field: field, value: newValue })
+        }).then(response => response.json()).then(data => {
+          if (data.status !== 'success') {
+            alert('Failed to update the CSV file');
+          }
+        });
+      }));
+
+      const makeEditable = (td, inputType = 'text') => {
+        td.setAttribute('tabindex', '0');
+        td.addEventListener('click', function() {
+          const login = this.dataset.login;
+          const field = this.dataset.field;
+          const currentValue = this.innerText;
+          const input = document.createElement('input');
+          input.type = inputType;
+          if (inputType === 'date') {
+            input.value = currentValue ? new Date(currentValue).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+          } else {
+            input.value = currentValue;
+          }
+          input.classList.add('border', 'border-gray-300', 'rounded', 'px-2', 'py-1');
+
+          let keydownHandled = false;
+
+          const saveAndMoveNext = (direction = 'down') => {
+            const newValue = input.value;
+            td.innerText = inputType === 'date' && newValue ? new Date(newValue).toISOString().split('T')[0] : newValue;
+
+            fetch('/update', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ login: login, field: field, value: newValue })
+            }).then(response => response.json()).then(data => {
+              if (data.status !== 'success') {
+                alert('Failed to update the CSV file');
+              } else {
+                let nextRow;
+                if (direction === 'down') {
+                  nextRow = td.closest('tr').nextElementSibling;
+                } else if (direction === 'up') {
+                  nextRow = td.closest('tr').previousElementSibling;
+                }
+                if (nextRow) {
+                  const nextEditable = nextRow.querySelector(`.editable[data-field="${field}"], .editable-date[data-field="${field}"]`);
+                  if (nextEditable) {
+                    nextEditable.click();
+                  }
+                }
+              }
+            });
+          };
+
+          const cancelEdit = () => {
+            td.innerText = currentValue;
+          };
+
+          const handleBlur = () => {
+            if (!keydownHandled) {
+              saveAndMoveNext('stay');
+            }
+          };
+
+          input.addEventListener('blur', handleBlur);
+
+          input.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              keydownHandled = true;
+              input.removeEventListener('blur', handleBlur);
+              saveAndMoveNext('down');
+            } else if (event.key === 'Enter' && event.shiftKey) {
+              event.preventDefault();
+              keydownHandled = true;
+              input.removeEventListener('blur', handleBlur);
+              saveAndMoveNext('up');
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              keydownHandled = true;
+              input.removeEventListener('blur', handleBlur);
+              cancelEdit();
+            }
+          });
+
+          td.innerText = '';
+          td.appendChild(input);
+          input.focus();
+        });
+
+        td.addEventListener('keydown', function(event) {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            td.click();
+          }
+        });
+      };
+
+      document.querySelectorAll('.editable').forEach(td => makeEditable(td));
+      document.querySelectorAll('.editable-date').forEach(td => makeEditable(td, 'date'));
+
+      const navigateTable = (event) => {
+        const focusableSelectors = [
+          'a[href]',
+          'button',
+          'textarea',
+          'input[type="text"]',
+          'input[type="radio"]',
+          'input[type="checkbox"]',
+          'select',
+          '[tabindex]:not([tabindex="-1"])'
+        ];
+
+        const current = document.activeElement.closest('td');
+
+        // Check if the focused element is an input, textarea, or any other element where default behavior should be preserved
+        const tagName = document.activeElement.tagName.toLowerCase();
+        const isInputElement = ['input', 'textarea', 'select'].includes(tagName) || document.activeElement.isContentEditable;
+
+        if (isInputElement) {
+          return; // Allow default behavior for these elements
+        }
+
+        if (event.key === 'j' || event.key === 'k') {
+          event.preventDefault();
+          let nextRow;
+          if (event.key === 'j') {
+            nextRow = current.closest('tr').nextElementSibling;
+            while (nextRow && !nextRow.children[current.cellIndex].querySelector(focusableSelectors.join(',')) && !nextRow.children[current.cellIndex].hasAttribute('tabindex')) {
+              nextRow = nextRow.nextElementSibling;
+            }
+          } else if (event.key === 'k') {
+            nextRow = current.closest('tr').previousElementSibling;
+            while (nextRow && !nextRow.children[current.cellIndex].querySelector(focusableSelectors.join(',')) && !nextRow.children[current.cellIndex].hasAttribute('tabindex')) {
+              nextRow = nextRow.previousElementSibling;
+            }
+          }
+          if (nextRow) {
+            const nextCell = nextRow.children[current.cellIndex];
+            const nextFocus = Array.from(nextCell.querySelectorAll(focusableSelectors.join(',')))[0];
+            if (nextFocus) {
+              nextFocus.focus();
+            } else if (nextCell) {
+              nextCell.focus();
+            }
+          }
+        }
+
+        if (event.key === 'h' || event.key === 'l') {
+          event.preventDefault();
+          let current = document.activeElement;
+          let nextCell;
+
+          if (current.closest('td')) { // Ensure current element is within a td
+            if (event.key === 'l') {
+              nextCell = current.closest('td').nextElementSibling;
+              while (nextCell && (!nextCell.querySelector(focusableSelectors.join(',')) && !nextCell.hasAttribute('tabindex'))) {
+                nextCell = nextCell.nextElementSibling;
+              }
+            } else if (event.key === 'h') {
+              nextCell = current.closest('td').previousElementSibling;
+              while (nextCell && (!nextCell.querySelector(focusableSelectors.join(',')) && !nextCell.hasAttribute('tabindex'))) {
+                nextCell = nextCell.previousElementSibling;
+              }
+            }
+
+            if (nextCell) {
+              const nextFocus = Array.from(nextCell.querySelectorAll(focusableSelectors.join(',')))[0];
+
+              if (nextFocus) {
+                nextFocus.focus();
+              } else {
+                nextCell.focus();
+              }
+            }
+          }
+        }
+      };
+
+      document.addEventListener('keydown', navigateTable);
+    });
+  </script>
+</head>
+<body class="bg-gray-100 p-6">
+  <div class="container mx-auto">
+    <h1 class="text-2xl font-bold mb-4">Access Review Audit</h1>
+    <div class="overflow-x-auto">
+      <table class="min-w-full bg-white border border-gray-200">
+        <thead>
+          <tr>
+            <% csv_content.headers.each do |header| %>
+              <th class="py-2 px-4 border-b border-gray-200 bg-gray-200 text-left cursor-pointer"><%= header %></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% csv_content.each_with_index do |row, index| %>
+            <tr class="<%= index.even? ? 'bg-gray-100' : 'bg-white' %> fixed-row-height">
+              <td class="py-2 px-4 border-b border-gray-200">
+                <div class=" relative flex items-center">
+                  <div class="tooltip">
+                    <img class="inline h-6 w-6 rounded-full ring-2 ring-white dark:ring-gray-900 transition duration-200 ease-in-out transform hover:scale-110 mr-1" src="https://avatars.githubusercontent.com/<%= row['GitHub Login'] %>" alt="<%= row['GitHub Login'] %>">
+                    <img class="avatar-tooltip hidden absolute z-10 w-48 h-48 rounded-full" src="https://avatars.githubusercontent.com/<%= row['GitHub Login'] %>" alt="<%= row['GitHub Login'] %>">
+                  </div>
+                  <a class="text-blue-500 hover:underline ml-2" href="https://github.com/<%= row['GitHub Login'] %>"><%= row['GitHub Login'] %></a>
+                </div>
+              </td>
+              <td class="py-2 px-4 border-b border-gray-200">
+                <button type="button" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent <%= row['Access Validated'] == 'Yes' ? 'bg-indigo-600' : 'bg-gray-200' %> transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 toggle" role="switch" aria-checked="<%= row['Access Validated'] == 'Yes' %>" data-field="Access Validated" data-login="<%= row['GitHub Login'] %>">
+                  <span class="sr-only"><%= row['Access Validated'] %></span>
+                  <span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 <%= row['Access Validated'] == 'Yes' ? 'translate-x-5' : 'translate-x-0' %> transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                </button>
+              </td>
+              <td class="py-2 px-4 border-b border-gray-200">
+                <button type="button" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent <%= row['Removed'] == 'Yes' ? 'bg-indigo-600' : 'bg-gray-200' %> transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 toggle" role="switch" aria-checked="<%= row['Removed'] == 'Yes' %>" data-field="Removed" data-login="<%= row['GitHub Login'] %>">
+                  <span class="sr-only"><%= row['Removed'] %></span>
+                  <span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 <%= row['Removed'] == 'Yes' ? 'translate-x-5' : 'translate-x-0' %> transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
+                </button>
+              </td>
+              <td class="py-2 px-4 border-b border-gray-200"><%= issue_links(row['Issue Numbers'], org, repo) %></td>
+              <td class="py-2 px-4 border-b border-gray-200"><%= format_date(row['Created At']) %></td>
+              <td class="py-2 px-4 border-b border-gray-200"><%= format_date(row['Closed At']) %></td>
+              <td class="py-2 px-4 border-b border-gray-200 editable-date" data-field="Access Last Approved At" data-login="<%= row['GitHub Login'] %>"><%= row['Access Last Approved At'] %></td>
+              <td class="py-2 px-4 border-b border-gray-200 editable" data-field="Comments" data-login="<%= row['GitHub Login'] %>">
+                <div style="min-width: 250px;"><%= row['Comments'] %></div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
