@@ -1,8 +1,7 @@
+require './environment'
 require 'net/http'
-require 'json'
-require 'csv'
 
-GITHUB_TOKEN = ENV['MY_GH_TOKEN']
+GITHUB_TOKEN = ENV.fetch('GH_TOKEN')
 
 class GitHubClient
   BASE_URL = 'https://api.github.com'
@@ -96,20 +95,15 @@ def fetch_issues_for_member(client, org, repo, member_login, title)
   client.search_issues(org, repo, "is:issue in:body \"#{member_login}\" in:title \"#{title}\"")
 end
 
-if ARGV.length != 3
-  puts "Usage: ruby #{$PROGRAM_NAME} <org> <team_slug> <repo>"
-  exit
-end
-
-org = ARGV[0]
-team_slug = ARGV[1]
-repo = ARGV[2]
+org = ENV.fetch('GH_ORGANIZATION')
+team_slug = ENV.fetch('GH_TEAM')
+repo = ENV.fetch('GH_REPOSITORY')
 
 client = GitHubClient.new(GITHUB_TOKEN)
 members = fetch_team_members(client, org, team_slug)
 
 CSV.open("members.csv", "w") do |csv|
-  csv << ["GitHub Login", "Name", "Access Validated", "Removed", "Issue Numbers", "Created At", "Closed At", "Access Last Approved At", "Comments"]
+  csv << ["GitHub Login", "Name", "Access Validated", "Removed", "Issue Numbers", "Created At", "Closed At", "Access Last Changed At", "Comments"]
 
   members.each do |member|
     member_login = member['login']

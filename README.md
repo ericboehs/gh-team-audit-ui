@@ -1,4 +1,5 @@
 To run:
 
-1. Set MY_GH_TOKEN env var
-2. Run `bundle;rackup`
+1. Run `cp .env.local.example .env.local`
+2. Edit `.env.local` with your own values
+3. Run `bundle;rackup`

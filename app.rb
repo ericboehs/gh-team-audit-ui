@@ -6,9 +6,11 @@ require 'sinatra'
 class App < Sinatra::Base
   get '/' do
     content_type :html
+    org = ENV.fetch('GH_ORGANIZATION')
+    repo = ENV.fetch('GH_REPOSITORY')
+    team = ENV.fetch('GH_TEAM')
+    @team_url = "https://github.com/orgs/#{org}/teams/#{team}"
     csv_content = CSV.read('members.csv', headers: true)
-    org = params[:org] || 'department-of-veterans-affairs'
-    repo = params[:repo] || 'va.gov-team'
     erb :index, locals: { csv_content: csv_content, org: org, repo: repo }
   end
 
@@ -41,7 +43,7 @@ class App < Sinatra::Base
 
     def issue_links(issue_numbers, org, repo)
       issue_numbers.split(', ').map do |issue_number|
-        "<a href=\"https://github.com/#{org}/#{repo}/issues/#{issue_number}\" class=\"text-blue-500 hover:underline\" target=\"_blank\">#{issue_number}</a>"
+        "<a href=\"https://github.com/#{org}/#{repo}/issues/#{issue_number}\" class=\"text-blue-800 hover:underline\" target=\"_blank\">#{issue_number}</a>"
       end.join("<br>")
     end
   end
