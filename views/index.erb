@@ -1,12 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Access Review Audit</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    .fixed-row-height {
-      height: 45px; /* Adjust this value as needed */
-    }
     .editable input, .editable-date input {
       height: 100%;
       box-sizing: border-box;
@@ -15,37 +14,6 @@
       display: block;
       top: -2.5rem;
       left: 2.5rem;
-    }
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 50;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0, 0, 0, 0.4);
-    }
-    .modal-content {
-      background-color: #fefefe;
-      margin: 15% auto;
-      padding: 20px;
-      border: 1px solid #888;
-      width: 80%;
-      max-width: 500px;
-    }
-    .close {
-      color: #aaa;
-      float: right;
-      font-size: 28px;
-      font-weight: bold;
-    }
-    .close:hover,
-    .close:focus {
-      color: black;
-      text-decoration: none;
-      cursor: pointer;
     }
   </style>
   <script>
@@ -78,22 +46,61 @@
         return v1.localeCompare(v2);
       };
 
-      document.querySelectorAll('th').forEach(th => th.addEventListener('click', function() {
-        const table = th.closest('table');
-        const tbody = table.querySelector('tbody');
-        Array.from(tbody.querySelectorAll('tr'))
-          .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
-          .forEach(tr => tbody.appendChild(tr));
+      document.querySelectorAll('th').forEach(th => {
+        // Wrap the content of th in a container with inline-flex
+        const contentWrapper = document.createElement('span');
+        contentWrapper.classList.add('inline-flex', 'items-center', 'align-middle');  // Ensure proper alignment
 
-        // Remove existing sort icons
-        document.querySelectorAll('th img').forEach(img => img.remove());
+        // Move the existing text content into the wrapper
+        contentWrapper.innerHTML = th.innerHTML;
+        th.innerHTML = '';  // Clear the th content
+        th.appendChild(contentWrapper);  // Append the wrapper with content back to the th
 
-        // Add new sort icon
-        const img = document.createElement('img');
-        img.src = this.asc ? 'https://unpkg.com/heroicons@1.0.6/outline/chevron-up.svg' : 'https://unpkg.com/heroicons@1.0.6/outline/chevron-down.svg';
-        img.classList.add('w-4', 'h-4', 'inline-block', 'ml-2');
-        th.appendChild(img);
-      }));
+        th.addEventListener('click', function() {
+          const table = th.closest('table');
+          const tbody = table.querySelector('tbody');
+          Array.from(tbody.querySelectorAll('tr'))
+            .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
+            .forEach(tr => tbody.appendChild(tr));
+
+          // Remove sort arrows from all other columns
+          document.querySelectorAll('th span.icon').forEach(icon => icon.remove());
+
+          // Check if there's already an icon span inside the clicked header
+          let existingIcon = contentWrapper.querySelector('span.icon');
+
+          if (existingIcon) {
+            existingIcon.remove();  // If an icon exists, remove it before adding the new one
+          }
+
+          // Create new sort icon container
+          const iconContainer = document.createElement('span');
+          iconContainer.classList.add('ml-1', 'flex-none', 'rounded', 'text-gray-900', 'icon'); // Adding 'icon' class for future reference
+
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+          svg.setAttribute('viewBox', '0 0 24 24');  // Update viewBox to match the correct size
+          svg.classList.add('h-4', 'w-4', 'align-middle');  // Adjust the class size to h-4 w-4
+
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('stroke-linecap', 'round');
+          path.setAttribute('stroke-linejoin', 'round');
+          path.setAttribute('stroke', 'currentColor');  // Set stroke color to current text color
+          path.setAttribute('stroke-width', '1.5');  // Set stroke width for proper visibility
+          path.setAttribute('fill', 'none');  // Ensure there's no fill since it's a stroked arrow
+
+          if (this.asc) {
+            path.setAttribute('d', 'M4.5 15.75l7.5-7.5 7.5 7.5'); // Up arrow
+          } else {
+            path.setAttribute('d', 'M19.5 8.25l-7.5 7.5-7.5-7.5'); // Down arrow
+          }
+
+          svg.appendChild(path);
+          iconContainer.appendChild(svg);
+
+          contentWrapper.appendChild(iconContainer);  // Append the icon to the wrapper
+        });
+      });
 
       document.querySelectorAll('.toggle').forEach(button => button.addEventListener('click', function() {
         const field = this.dataset.field;
@@ -291,80 +298,149 @@
             }
           }
         }
-
-    if (event.ctrlKey && event.key === '/') {
-          event.preventDefault();
-          const modal = document.getElementById('shortcutModal');
-          modal.style.display = 'block';
-        }
-
-        if (event.key === 'Escape') {
-          const modal = document.getElementById('shortcutModal');
-          if (modal.style.display === 'block') {
-            modal.style.display = 'none';
-          }
-        }
       };
 
       document.addEventListener('keydown', navigateTable);
 
-      const closeModal = () => {
+      function showModal() {
         const modal = document.getElementById('shortcutModal');
-        modal.style.display = 'none';
-      };
+        const closeButton = modal.querySelector('button[tabindex="0"]');
+        const backdrop = modal.querySelector('.fixed.inset-0');
+        const panel = modal.querySelector('.relative.transform');
 
-      document.querySelector('.close').addEventListener('click', closeModal);
+        // Start with hidden state for the backdrop and panel
+        backdrop.classList.add('opacity-0');
+        panel.classList.add('opacity-0', 'translate-y-4', 'sm:translate-y-0', 'sm:scale-95');
 
-      window.addEventListener('click', (event) => {
+        // Make modal visible
+        modal.classList.remove('hidden');
+
+        // Force reflow to ensure the CSS changes are applied before removing transition classes
+        modal.offsetHeight;
+
+        // Apply final visible state with transition
+        backdrop.classList.remove('opacity-0');
+        backdrop.classList.add('opacity-100', 'ease-out', 'duration-300');
+
+        panel.classList.remove('opacity-0', 'translate-y-4', 'sm:scale-95');
+        panel.classList.add('opacity-100', 'translate-y-0', 'sm:scale-100', 'ease-out', 'duration-300');
+        closeButton.focus();
+      }
+
+      function hideModal() {
         const modal = document.getElementById('shortcutModal');
-        if (event.target === modal) {
-          modal.style.display = 'none';
+        const backdrop = modal.querySelector('.fixed.inset-0');
+        const panel = modal.querySelector('.relative.transform');
+
+        // Apply transition to hide state
+        backdrop.classList.remove('opacity-100');
+        backdrop.classList.add('opacity-0', 'ease-in', 'duration-200');
+
+        panel.classList.remove('opacity-100', 'translate-y-0', 'sm:scale-100');
+        panel.classList.add('opacity-0', 'translate-y-4', 'sm:scale-95', 'ease-in', 'duration-200');
+
+        // Wait for transition to finish before hiding the modal completely
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 200); // Match the duration with the ease-in duration
+      }
+
+      // Handle keypress to open and close the modal
+      document.addEventListener('keydown', (event) => {
+        if (event.ctrlKey && event.key === '/') {
+          event.preventDefault();
+          const modal = document.getElementById('shortcutModal');
+          if (modal.classList.contains('hidden')) {
+            showModal();
+          } else {
+            hideModal();
+          }
+        }
+
+        if (event.key === 'Escape') {
+          const modal = document.getElementById('shortcutModal');
+          if (!modal.classList.contains('hidden')) {
+            hideModal();
+          }
         }
       });
+
+      // Close modal when clicking on the backdrop
+      document.addEventListener('click', (event) => {
+        const modal = document.getElementById('shortcutModal');
+        if (event.target === modal) {
+          hideModal();
+        }
+      });
+
+      // Close modal using the close button
+      window.closeModal = function() {
+        hideModal();
+      };
     });
   </script>
 </head>
 <body class="bg-white p-6">
-  <div class="container mx-auto">
-    <h1 class="text-2xl font-bold mb-4">Access Review Audit</h1>
-    <div class="overflow-x-auto">
-      <table class="min-w-full bg-white border border-gray-200">
+  <div class="px-4 sm:px-6 lg:px-8">
+    <div class="sm:flex sm:items-center">
+      <div class="sm:flex-auto">
+        <h1 class="text-base font-semibold leading-6 text-gray-900">Access Review Audit</h1>
+        <p class="mt-2 text-sm text-gray-700">Review access status, removal status, and activity logs for users in your system.</p>
+      </div>
+      <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
+      </div>
+    </div>
+    <div class="-mx-4 mt-10 ring-1 ring-gray-300 sm:mx-0 sm:rounded-lg">
+      <table class="min-w-full divide-y divide-gray-300">
         <thead>
-          <tr>
-            <% csv_content.headers.each do |header| %>
-              <th class="py-2 px-4 border-b border-gray-200 bg-gray-200 text-left cursor-pointer"><%= header %></th>
-            <% end %>
+          <tr class=" cursor-pointer">
+            <th class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900">GitHub Login</th>
+            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+              <div class="flex items-center">Access Validated</div>
+            </th>
+            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Removed</th>
+            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Issues</th>
+            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Created At</th>
+            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Closed At</th>
+            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Access Last Approved At</th>
+            <th class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Comments</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="divide-y divide-gray-200">
           <% csv_content.each_with_index do |row, index| %>
-            <tr class="<%= index.even? ? 'bg-gray-100' : 'bg-white' %> fixed-row-height">
-              <td class="py-2 px-4 border-b border-gray-200">
-                <div class=" relative flex items-center">
-                  <div class="tooltip">
-                    <img class="inline h-6 w-6 rounded-full ring-2 ring-white dark:ring-gray-900 transition duration-200 ease-in-out transform hover:scale-110 mr-1" src="https://avatars.githubusercontent.com/<%= row['GitHub Login'] %>" alt="<%= row['GitHub Login'] %>">
-                    <img class="avatar-tooltip hidden absolute z-10 w-48 h-48 rounded-full" src="https://avatars.githubusercontent.com/<%= row['GitHub Login'] %>" alt="<%= row['GitHub Login'] %>">
+            <tr>
+              <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm">
+                <div class="flex items-center">
+                  <div class="h-11 w-11 flex-shrink-0">
+                    <img class="h-11 w-11 rounded-full ring-2 ring-white transition duration-200 ease-in-out transform hover:scale-150" src="https://avatars.githubusercontent.com/<%= row['GitHub Login'] %>" alt="<%= row['GitHub Login'] %>">
                   </div>
-                  <a class="text-blue-500 hover:underline ml-2" href="https://github.com/<%= row['GitHub Login'] %>"><%= row['GitHub Login'] %></a>
+                  <div class="ml-4">
+                    <a class="font-medium text-gray-900 hover:underline" 
+                       href="https://github.com/<%= row['GitHub Login'] %>"
+                       onfocus="this.parentElement.previousElementSibling.children[0].classList.add('scale-150')"
+                       onblur="this.parentElement.previousElementSibling.children[0].classList.remove('scale-150')">
+                       <%= row['GitHub Login'] %>
+                    </a>
+                  </div>
                 </div>
               </td>
-              <td class="py-2 px-4 border-b border-gray-200">
+              <td class="py-2 px-4">
                 <button type="button" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent <%= row['Access Validated'] == 'Yes' ? 'bg-indigo-600' : 'bg-gray-200' %> transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 toggle" role="switch" aria-checked="<%= row['Access Validated'] == 'Yes' %>" data-field="Access Validated" data-login="<%= row['GitHub Login'] %>">
                   <span class="sr-only"><%= row['Access Validated'] %></span>
                   <span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 <%= row['Access Validated'] == 'Yes' ? 'translate-x-5' : 'translate-x-0' %> transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
                 </button>
               </td>
-              <td class="py-2 px-4 border-b border-gray-200">
+              <td class="py-2 px-4">
                 <button type="button" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent <%= row['Removed'] == 'Yes' ? 'bg-indigo-600' : 'bg-gray-200' %> transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 toggle" role="switch" aria-checked="<%= row['Removed'] == 'Yes' %>" data-field="Removed" data-login="<%= row['GitHub Login'] %>">
                   <span class="sr-only"><%= row['Removed'] %></span>
                   <span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 <%= row['Removed'] == 'Yes' ? 'translate-x-5' : 'translate-x-0' %> transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
                 </button>
               </td>
-              <td class="py-2 px-4 border-b border-gray-200"><%= issue_links(row['Issue Numbers'], org, repo) %></td>
-              <td class="py-2 px-4 border-b border-gray-200"><%= format_date(row['Created At']) %></td>
-              <td class="py-2 px-4 border-b border-gray-200"><%= format_date(row['Closed At']) %></td>
-              <td class="py-2 px-4 border-b border-gray-200 editable-date" data-field="Access Last Approved At" data-login="<%= row['GitHub Login'] %>"><%= row['Access Last Approved At'] %></td>
-              <td class="py-2 px-4 border-b border-gray-200 editable" data-field="Comments" data-login="<%= row['GitHub Login'] %>">
+              <td class="px-3 py-5 text-sm"><%= issue_links(row['Issue Numbers'], org, repo) %></td>
+              <td class="px-3 py-5 text-sm"><%= format_date(row['Created At']) %></td>
+              <td class="px-3 py-5 text-sm"><%= format_date(row['Closed At']) %></td>
+              <td class="px-3 py-5 text-sm editable-date" data-field="Access Last Approved At" data-login="<%= row['GitHub Login'] %>"><%= row['Access Last Approved At'] %></td>
+              <td class="px-3 py-5 text-sm editable" data-field="Comments" data-login="<%= row['GitHub Login'] %>">
                 <div style="min-width: 250px;"><%= row['Comments'] %></div>
               </td>
             </tr>
@@ -374,109 +450,117 @@
     </div>
   </div>
 
-<!-- The Modal -->
-<div id="shortcutModal" class="hidden relative z-10" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-  <!-- Background backdrop -->
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+  <!-- The Modal -->
+  <div id="shortcutModal" class="relative z-10 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <!-- Background backdrop -->
+    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
 
-  <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
-    <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-      <!-- Modal panel -->
-      <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-        <div>
-          <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
-            <svg class="h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-keyboard" viewBox="0 0 16 16">
-              <path d="M14 5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM2 4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
-              <path d="M13 10.25a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm0-2a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm-5 0A.25.25 0 0 1 8.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 8 8.75zm2 0a.25.25 0 0 1 .25-.25h1.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-1.5a.25.25 0 0 1-.25-.25zm1 2a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm-5-2A.25.25 0 0 1 6.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 6 8.75zm-2 0A.25.25 0 0 1 4.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 4 8.75zm-2 0A.25.25 0 0 1 2.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 2 8.75zm11-2a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm-2 0a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm-2 0A.25.25 0 0 1 9.25 6h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 9 6.75zm-2 0A.25.25 0 0 1 7.25 6h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 7 6.75zm-2 0A.25.25 0 0 1 5.25 6h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 5 6.75zm-3 0A.25.25 0 0 1 2.25 6h1.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-1.5A.25.25 0 0 1 2 6.75zm0 4a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm2 0a.25.25 0 0 1 .25-.25h5.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-5.5a.25.25 0 0 1-.25-.25z"/>
-            </svg>
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+      <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+        <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+          <div class="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
+            <button type="button" tabindex="0" class="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" onclick="closeModal()">
+              <span class="sr-only">Close</span>
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <div class="mt-3 text-center sm:mt-5">
-            <h3 class="text-base font-semibold leading-6 text-gray-900" id="modal-title">Keyboard Shortcuts</h3>
-            <div class="mt-2">
-              <table class="text-sm text-gray-500 w-full">
-                <tbody>
-                  <tr>
-                    <td class="px-2 py-1 text-right">
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Ctrl</kbd>
-                      +
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">j</kbd>
-                    </td>
-                    <td class="px-2 py-1 text-left">Move focus to the next row</td>
-                  </tr>
-                  <tr>
-                    <td class="px-2 py-1 text-right">
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Ctrl</kbd>
-                      +
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">k</kbd>
-                    </td>
-                    <td class="px-2 py-1 text-left">Move focus to the previous row</td>
-                  </tr>
-                  <tr>
-                    <td class="px-2 py-1 text-right">
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Ctrl</kbd>
-                      +
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">h</kbd>
-                    </td>
-                    <td class="px-2 py-1 text-left">Move focus to the previous cell</td>
-                  </tr>
-                  <tr>
-                    <td class="px-2 py-1 text-right">
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Ctrl</kbd>
-                      +
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">l</kbd>
-                    </td>
-                    <td class="px-2 py-1 text-left">Move focus to the next cell</td>
-                  </tr>
-                  <tr>
-                    <td class="px-2 py-1 text-right">
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Ctrl</kbd>
-                      +
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">/</kbd>
-                    </td>
-                    <td class="px-2 py-1 text-left">Show this keyboard shortcut modal</td>
-                  </tr>
-                  <tr>
-                    <td class="px-2 py-1 text-right">
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Tab</kbd>
-                    </td>
-                    <td class="px-2 py-1 text-left">Move focus to the next field</td>
-                  </tr>
-                  <tr>
-                    <td class="px-2 py-1 text-right">
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Shift</kbd>
-                      +
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Tab</kbd>
-                    </td>
-                    <td class="px-2 py-1 text-left">Move focus to the previous field</td>
-                  </tr>
-                  <tr>
-                    <td class="px-2 py-1 text-right">
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Enter</kbd>
-                    </td>
-                    <td class="px-2 py-1 text-left">Save changes and move to the next field</td>
-                  </tr>
-                  <tr>
-                    <td class="px-2 py-1 text-right">
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Shift</kbd>
-                      +
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Enter</kbd>
-                    </td>
-                    <td class="px-2 py-1 text-left">Save changes and move to the previous field</td>
-                  </tr>
-                  <tr>
-                    <td class="px-2 py-1 text-right">
-                      <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Escape</kbd>
-                    </td>
-                    <td class="px-2 py-1 text-left">Cancel editing (changes will not be saved)</td>
-                  </tr>
-                </tbody>
-              </table>
+
+          <div>
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+              <svg class="h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-keyboard" viewBox="0 0 16 16">
+                <path d="M14 5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM2 4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
+                <path d="M13 10.25a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm0-2a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm-5 0A.25.25 0 0 1 8.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 8 8.75zm2 0a.25.25 0 0 1 .25-.25h1.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-1.5a.25.25 0 0 1-.25-.25zm1 2a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm-5-2A.25.25 0 0 1 6.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 6 8.75zm-2 0A.25.25 0 0 1 4.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 4 8.75zm-2 0A.25.25 0 0 1 2.25 8h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 2 8.75zm11-2a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm-2 0a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm-2 0A.25.25 0 0 1 9.25 6h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 9 6.75zm-2 0A.25.25 0 0 1 7.25 6h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 7 6.75zm-2 0A.25.25 0 0 1 5.25 6h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5A.25.25 0 0 1 5 6.75zm-3 0A.25.25 0 0 1 2.25 6h1.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-1.5A.25.25 0 0 1 2 6.75zm0 4a.25.25 0 0 1 .25-.25h.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-.5a.25.25 0 0 1-.25-.25zm2 0a.25.25 0 0 1 .25-.25h5.5a.25.25 0 0 1 .25.25v.5a.25.25 0 0 1-.25.25h-5.5a.25.25 0 0 1-.25-.25z"/>
+              </svg>
+            </div>
+            <div class="mt-3 text-center sm:mt-5">
+              <h3 class="text-base font-semibold leading-6 text-gray-900" id="modal-title">Keyboard Shortcuts</h3>
+              <div class="mt-2">
+                <table class="text-sm text-gray-500 w-full">
+                  <tbody>
+                    <tr>
+                      <td class="px-2 py-1 text-right">
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Ctrl</kbd>
+                        +
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">j</kbd>
+                      </td>
+                      <td class="px-2 py-1 text-left">Move focus to the next row</td>
+                    </tr>
+                    <tr>
+                      <td class="px-2 py-1 text-right">
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Ctrl</kbd>
+                        +
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">k</kbd>
+                      </td>
+                      <td class="px-2 py-1 text-left">Move focus to the previous row</td>
+                    </tr>
+                    <tr>
+                      <td class="px-2 py-1 text-right">
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Ctrl</kbd>
+                        +
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">h</kbd>
+                      </td>
+                      <td class="px-2 py-1 text-left">Move focus to the previous cell</td>
+                    </tr>
+                    <tr>
+                      <td class="px-2 py-1 text-right">
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Ctrl</kbd>
+                        +
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">l</kbd>
+                      </td>
+                      <td class="px-2 py-1 text-left">Move focus to the next cell</td>
+                    </tr>
+                    <tr>
+                      <td class="px-2 py-1 text-right">
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Ctrl</kbd>
+                        +
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">/</kbd>
+                      </td>
+                      <td class="px-2 py-1 text-left">Show this keyboard shortcut modal</td>
+                    </tr>
+                    <tr>
+                      <td class="px-2 py-1 text-right">
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Tab</kbd>
+                      </td>
+                      <td class="px-2 py-1 text-left">Move focus to the next field</td>
+                    </tr>
+                    <tr>
+                      <td class="px-2 py-1 text-right">
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Shift</kbd>
+                        +
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Tab</kbd>
+                      </td>
+                      <td class="px-2 py-1 text-left">Move focus to the previous field</td>
+                    </tr>
+                    <tr>
+                      <td class="px-2 py-1 text-right">
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Enter</kbd>
+                      </td>
+                      <td class="px-2 py-1 text-left">Save changes and move to the next field</td>
+                    </tr>
+                    <tr>
+                      <td class="px-2 py-1 text-right">
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Shift</kbd>
+                        +
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Enter</kbd>
+                      </td>
+                      <td class="px-2 py-1 text-left">Save changes and move to the previous field</td>
+                    </tr>
+                    <tr>
+                      <td class="px-2 py-1 text-right">
+                        <kbd class="inline-flex items-center px-2 py-1.5 text-gray-800 bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-600 dark:text-gray-100 dark:border-gray-500">Escape</kbd>
+                      </td>
+                      <td class="px-2 py-1 text-left">Cancel editing (changes will not be saved)</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 </body>
 </html>
