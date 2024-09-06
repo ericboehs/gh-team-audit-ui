@@ -79,11 +79,11 @@ class GitHubClient
 
     puts "Rate Limit: #{limit}, Remaining: #{remaining}, Reset Time: #{Time.at(reset_time)}"
 
-    if remaining < 10
-      sleep_time = [reset_time - Time.now.to_i, 0].max
-      puts "Rate limit almost exceeded, sleeping for #{sleep_time} seconds..."
-      sleep(sleep_time)
-    end
+    return unless remaining < 10
+
+    sleep_time = [reset_time - Time.now.to_i, 0].max
+    puts "Rate limit almost exceeded, sleeping for #{sleep_time} seconds..."
+    sleep(sleep_time)
   end
 end
 
@@ -102,19 +102,30 @@ repo = ENV.fetch('GH_REPOSITORY')
 client = GitHubClient.new(GITHUB_TOKEN)
 members = fetch_team_members(client, org, team_slug)
 
-CSV.open("members.csv", "w") do |csv|
-  csv << ["GitHub Login", "Name", "Access Validated", "Removed", "Issue Numbers", "Created At", "Closed At", "Access Last Changed At", "Comments"]
+CSV.open(ENV.fetch('GH_CSV_NAME', 'members.csv'), 'w') do |csv|
+  csv << [
+    'GitHub Login',
+    'Name',
+    'Access Validated',
+    'Removed',
+    'Issue Numbers',
+    'Created At',
+    'Closed At',
+    'Access Last Changed At',
+    'Comments'
+  ]
 
   members.each do |member|
     member_login = member['login']
     user_details = client.get_user_details(member_login)
     member_name = user_details['name'] || 'N/A'
 
-    issues = fetch_issues_for_member(client, org, repo, member_login, "Vets-api terminal")
+    issues = fetch_issues_for_member(client, org, repo, member_login, 'Vets-api terminal')
+    issues = issues.reject { |issue| issue['title'].downcase.include?('sidekiq') }
 
-    issue_numbers = issues.map { |issue| issue['number'] }.join(", ")
-    created_at = issues.map { |issue| issue['created_at'] }.join(", ")
-    closed_at = issues.map { |issue| issue['closed_at'] }.join(", ")
+    issue_numbers = issues.map { |issue| issue['number'] }.join(', ')
+    created_at = issues.map { |issue| issue['created_at'] }.join(', ')
+    closed_at = issues.map { |issue| issue['closed_at'] }.join(', ')
 
     csv << [member_login, member_name, 'No', 'No', issue_numbers, created_at, closed_at, nil, nil]
   end

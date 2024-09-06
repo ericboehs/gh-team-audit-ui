@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Access Review Audit</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
   <style>
     .editable input, .editable-date input {
       height: 100%;
@@ -17,6 +17,43 @@
     }
   </style>
   <script>
+    function filterOnChange() {
+      const accessValidated = document.getElementById('access-validated').value;
+      const removed = document.getElementById('removed').value;
+
+      const params = new URLSearchParams(window.location.search);
+      if (accessValidated) {
+        params.set('validated', accessValidated);
+      } else {
+        params.delete('validated');
+      }
+      if (removed) {
+        params.set('removed', removed);
+      } else {
+        params.delete('removed');
+      }
+
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.location.href = newUrl;
+    }
+
+    function navigateOnEnter(event) {
+      if (event.key === 'Enter') {
+        const params = new URLSearchParams(window.location.search);
+        const value = document.getElementById(event.target.name).value;
+
+        if (value) {
+          params.set(event.target.name, value);
+        } else {
+          params.delete(event.target.name);
+        }
+
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.location.href = newUrl;
+        event.preventDefault();
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
 
@@ -469,6 +506,17 @@
       window.closeModal = function() {
         hideModal();
       };
+
+      var spans = document.querySelectorAll('.highlight-for-copy');
+      spans.forEach(function(span) {
+        span.addEventListener('focus', function() {
+          var range = document.createRange();
+          range.selectNodeContents(this);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        });
+      });
     });
   </script>
 </head>
@@ -487,17 +535,50 @@
         </a>
       </div>
     </div>
-      <% if csv_content.empty? %>
-        <div class="flex items-center justify-center">
-          <div class="text-center py-10 mt-10 ring-1 ring-gray-300 sm:mx-0 sm:rounded-lg max-w-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mx-auto h-12 w-12">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Zm3.75 11.625a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-            </svg>
-            <h3 class="mt-2 mb-6 text-sm font-medium text-gray-900">No data available</h3>
-            <p class="mx-auto mt-1 text-sm text-gray-500">Run <code class="bg-gray-100 text-gray-800 rounded px-1 py-0.5">ruby fetch_members_of_team.rb &lt;your-org&gt; &lt;team-to-audit&gt; &lt;repo-with-access-requests&gt;</code> to populate the data.</p>
-          </div>
+    <div class="mt-4 flex space-x-4">
+      <div>
+        <label for="user" class="block text-sm font-medium leading-6 text-gray-900">User</label>
+        <input type="text" id="user" name="user" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['user'] %>" onkeydown="navigateOnEnter(event)">
+      </div>
+      <div>
+        <label for="access-validated" class="block text-sm font-medium leading-6 text-gray-900">Access Validated</label>
+        <select id="access-validated" name="access-validated" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" onchange="filterOnChange()">
+          <option value="" <%= 'selected' if params['validated'].nil? %>>All</option>
+          <option value="true" <%= 'selected' if params['validated'] == 'true' %>>Yes</option>
+          <option value="false" <%= 'selected' if params['validated'] == 'false' %>>No</option>
+        </select>
+      </div>
+      <div>
+        <label for="removed" class="block text-sm font-medium leading-6 text-gray-900">Removed</label>
+        <select id="removed" name="removed" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" onchange="filterOnChange()">
+          <option value="" <%= 'selected' if params['removed'].nil? %>>All</option>
+          <option value="true" <%= 'selected' if params['removed'] == 'true' %>>Yes</option>
+          <option value="false" <%= 'selected' if params['removed'] == 'false' %>>No</option>
+        </select>
+      </div>
+      <div>
+        <label for="issue" class="block text-sm font-medium leading-6 text-gray-900">Issue #</label>
+        <input type="text" id="issue" name="issue" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['issue'] %>" onkeydown="navigateOnEnter(event)">
+      </div>
+      <div>
+        <label for="comment" class="block text-sm font-medium leading-6 text-gray-900">Comment</label>
+        <input type="comment" id="comment" name="comment" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['comment'] %>" onkeydown="navigateOnEnter(event)">
+      </div>
+      <div class="flex flex-col justify-end pl-6">
+        <a href="/" class="text-gray-500">Clear all</a>
+      </div>  
+    </div>
+    <% if csv_content.empty? %>
+      <div class="flex items-center justify-center">
+        <div class="text-center p-10 mt-10 ring-1 ring-gray-300 sm:mx-0 sm:rounded-lg max-w-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mx-auto h-12 w-12">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Zm3.75 11.625a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+          </svg>
+          <h3 class="mt-2 mb-6 text-sm font-medium text-gray-900">No data available</h3>
+          <p class="mx-auto mt-1 text-sm text-gray-500">Run <code class="bg-gray-100 text-gray-800 rounded px-1 py-0.5">ruby fetch_members_of_team.rb</code> to populate the data.</p>
         </div>
-      <% else %>
+      </div>
+    <% else %>
     <div class="-mx-4 mt-10 ring-1 ring-gray-300 sm:mx-0 sm:rounded-lg">
       <table class="min-w-full divide-y divide-gray-300">
         <thead>
@@ -534,7 +615,7 @@
                 </div>
               </td>
               <td class="py-2 px-4">
-                <span><%= row['Name'] %></span>
+                <span class="highlight-for-copy outline-none" tabindex="0"><%= row['Name'] %></span>
               </td>
               <td class="py-2 px-4">
                 <button type="button" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent <%= row['Access Validated'] == 'Yes' ? 'bg-blue-900' : 'bg-gray-200' %> transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-900 focus:ring-offset-2 toggle" role="switch" aria-checked="<%= row['Access Validated'] == 'Yes' %>" data-field="Access Validated" data-login="<%= row['GitHub Login'] %>">
@@ -548,12 +629,12 @@
                   <span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 <%= row['Removed'] == 'Yes' ? 'translate-x-5' : 'translate-x-0' %> transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"></span>
                 </button>
               </td>
-              <td class="px-3 py-5 text-sm"><%= issue_links(row['Issue Numbers'], org, repo) %></td>
-              <td class="px-3 py-5 text-sm"><%= format_date(row['Created At']) %></td>
-              <td class="px-3 py-5 text-sm"><%= format_date(row['Closed At']) %></td>
+              <td class="px-3 py-5 text-sm"><span class="outline-none"><%= issue_links(row['Issue Numbers'], org, repo) %></span</td>
+              <td class="px-3 py-5 text-sm"><span class="highlight-for-copy outline-none" tabindex="0"><%= format_date(row['Created At']) %></span</td>
+              <td class="px-3 py-5 text-sm"><span class="highlight-for-copy outline-none" tabindex="0"><%= format_date(row['Closed At']) %></span></td>
               <td class="px-3 py-5 text-sm editable-date" data-field="Access Last Changed At" data-login="<%= row['GitHub Login'] %>"><%= row['Access Last Changed At'] %></td>
               <td class="px-3 py-5 text-sm editable" data-field="Comments" data-login="<%= row['GitHub Login'] %>">
-                <div style="min-width: 250px;"><%= row['Comments'] %></div>
+                <div style="min-width: 250px;" tabindex="0"><%= !row['Comments']&.empty? ? row['Comments'] : '-' %></div>
               </td>
             </tr>
           <% end %>
