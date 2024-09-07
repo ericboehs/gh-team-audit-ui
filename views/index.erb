@@ -104,8 +104,8 @@
         return v1.localeCompare(v2);
       };
 
-      document.querySelectorAll('a[title]').forEach(link => {
-        const tooltipText = link.getAttribute('title');
+      document.querySelectorAll('a[tooltip]').forEach(link => {
+        const tooltipText = link.getAttribute('tooltip');
         const tooltipSpan = document.createElement('span');
         tooltipSpan.classList.add('tooltiptext');
         tooltipSpan.innerText = tooltipText;
@@ -562,20 +562,20 @@
         <!-- left aligned button goes here -->
       </div>
     </div>
-    <div class="mt-4 flex space-x-4">
-      <div>
+    <div class="mt-4 flex flex-wrap space-x-4">
+      <div class="w-full sm:w-1/3 md:w-1/6 lg:w-1/8 xl:w-1/10 mb-4">
         <label for="user" class="block text-sm font-medium leading-6 text-gray-900">User</label>
-        <input type="text" id="user" name="user" placeholder="GitHub Username" class="placeholder-gray-300 mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['user'] %>" onkeydown="navigateOnEnter(event)">
+        <input type="text" id="user" name="user" placeholder="defunkt or ^def.*$" class="placeholder-gray-300 mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['user'] %>" onkeydown="navigateOnEnter(event)">
       </div>
-      <div>
-        <label for="access-validated" class="block text-sm font-medium leading-6 text-gray-900">Access Validated</label>
+      <div class="w-full sm:w-1/4 md:w-1/8 lg:w-1/10 xl:w-1/12 mb-4">
+        <label for="access-validated" class="block text-sm font-medium leading-6 text-gray-900 whitespace-nowrap">Access Validated</label>
         <select id="access-validated" name="access-validated" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" onchange="filterOnChange()">
           <option value="" <%= 'selected' if params['validated'].nil? %>>All</option>
           <option value="true" <%= 'selected' if params['validated'] == 'true' %>>Yes</option>
           <option value="false" <%= 'selected' if params['validated'] == 'false' %>>No</option>
         </select>
       </div>
-      <div>
+      <div class="w-full sm:w-1/4 md:w-1/8 lg:w-1/10 xl:w-1/12 mb-4">
         <label for="removed" class="block text-sm font-medium leading-6 text-gray-900">Removed</label>
         <select id="removed" name="removed" class="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" onchange="filterOnChange()">
           <option value="" <%= 'selected' if params['removed'].nil? %>>All</option>
@@ -583,25 +583,25 @@
           <option value="false" <%= 'selected' if params['removed'] == 'false' %>>No</option>
         </select>
       </div>
-      <div>
+      <div class="w-full sm:w-1/3 md:w-1/6 lg:w-1/8 xl:w-1/10 mb-4">
         <label for="issue" class="block text-sm font-medium leading-6 text-gray-900">Issue #</label>
-        <input type="text" id="issue" name="issue" placeholder="12345" class="placeholder-gray-300 mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['issue'] %>" onkeydown="navigateOnEnter(event)">
+        <input type="text" id="issue" name="issue" placeholder="12345 or ^\s*$" class="placeholder-gray-300 mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['issue'] %>" onkeydown="navigateOnEnter(event)">
       </div>
-      <div>
+      <div class="w-full sm:w-1/3 md:w-1/6 lg:w-1/8 xl:w-1/10 mb-4">
         <label for="comment" class="block text-sm font-medium leading-6 text-gray-900">Comment</label>
-        <input type="comment" id="comment" name="comment" placeholder="^\s*$" class="placeholder-gray-300 mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['comment'] %>" onkeydown="navigateOnEnter(event)">
+        <input type="comment" id="comment" name="comment" placeholder="eng or ^\s*$" class="placeholder-gray-300 mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-blue-900 sm:text-sm sm:leading-6" value="<%= params['comment'] %>" onkeydown="navigateOnEnter(event)">
       </div>
-      <div class="flex flex-col justify-end pl-6">
+      <div class="w-full sm:w-auto flex flex-col justify-end mb-4">
         <a href="/" class="text-gray-500">Clear all</a>
       </div>
-      <div class="flex-grow flex items-end justify-end pl-6">
+      <div class="w-full sm:w-auto flex-grow flex items-end justify-end pl-6 mb-4">
         <div class="text-right">
           <% if csv_content.size != @total_count %>
             Showing <%= csv_content.size %> of
           <% else %>
             Showing all 
           <% end %>
-          <a href="<%= @team_url %>" target="_blank" title="<%= "#{@removed_count} removed" if @removed_count > 0 %>" class="bg-stone-50 underline text-blue-800">
+          <a href="<%= @team_url %>" target="_blank" tooltip="<%= "#{@removed_count} removed" if @removed_count > 0 %>" class="bg-stone-50 underline text-blue-800">
             <%= @total_count %> members</a>
         </div>
       </div>
@@ -630,7 +630,6 @@
             <th tabindex="0" class="sticky top-0 z-10 border-b border-gray-300 bg-blue-900 bg-opacity-90 px-3 py-3.5 text-left text-sm font-semibold text-gray-100">Issues</th>
             <th tabindex="0" class="sticky top-0 z-10 border-b border-gray-300 bg-blue-900 bg-opacity-90 px-3 py-3.5 text-left text-sm font-semibold text-gray-100">Created At</th>
             <th tabindex="0" class="sticky top-0 z-10 border-b border-gray-300 bg-blue-900 bg-opacity-90 px-3 py-3.5 text-left text-sm font-semibold text-gray-100">Updated At</th>
-            <th tabindex="0" class="sticky top-0 z-10 border-b border-gray-300 bg-blue-900 bg-opacity-90 px-3 py-3.5 text-left text-sm font-semibold text-gray-100">Access Last Changed At</th>
             <th tabindex="0" class="sticky top-0 z-10 border-b border-gray-300 bg-blue-900 bg-opacity-90 px-3 py-3.5 text-left text-sm font-semibold text-gray-100 sm:rounded-tr-lg">Comments</th>
           </tr>
         </thead>
@@ -670,7 +669,6 @@
               <td class="px-3 py-5 text-sm"><span class="outline-none"><%= issue_links(row['Issue Numbers'], org, repo) %></span</td>
               <td class="px-3 py-5 text-sm"><span class="highlight-for-copy outline-none" tabindex="0"><%= format_date(row['Created At']) %></span</td>
               <td class="px-3 py-5 text-sm"><span class="highlight-for-copy outline-none" tabindex="0"><%= format_date(row['Updated At']) %></span></td>
-              <td class="px-3 py-5 text-sm editable-date" data-field="Access Last Changed At" data-login="<%= row['GitHub Login'] %>"><%= row['Access Last Changed At'] %></td>
               <td class="px-3 py-5 text-sm editable" data-field="Comments" data-login="<%= row['GitHub Login'] %>">
                 <div style="min-width: 250px;" tabindex="0"><%= !row['Comments']&.empty? ? row['Comments'] : '-' %></div>
               </td>
