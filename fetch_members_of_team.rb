@@ -77,8 +77,6 @@ class GitHubClient
     reset_time = response['x-ratelimit-reset'].to_i
     limit = response['x-ratelimit-limit'].to_i
 
-    puts "Rate Limit: #{limit}, Remaining: #{remaining}, Reset Time: #{Time.at(reset_time)}"
-
     return unless remaining < 10
 
     sleep_time = [reset_time - Time.now.to_i, 0].max
@@ -98,6 +96,8 @@ end
 org = ENV.fetch('GH_ORGANIZATION')
 team_slug = ENV.fetch('GH_TEAM')
 repo = ENV.fetch('GH_REPOSITORY')
+search = ENV.fetch('GH_REPOSITORY_SEARCH')
+search_except = ENV.fetch('GH_REPOSITORY_SEARCH_EXCEPT')
 
 client = GitHubClient.new(GITHUB_TOKEN)
 members = fetch_team_members(client, org, team_slug)
@@ -119,13 +119,12 @@ CSV.open(ENV.fetch('GH_CSV_NAME', 'members.csv'), 'w') do |csv|
     user_details = client.get_user_details(member_login)
     member_name = user_details['name'] || 'N/A'
 
-    issues = fetch_issues_for_member(client, org, repo, member_login, 'Vets-api terminal')
-    issues = issues.reject { |issue| issue['title'].downcase.include?('sidekiq') }
+    issues = fetch_issues_for_member(client, org, repo, member_login, search)
+    issues = issues.reject { |issue| issue['title'].downcase.include?(search_except) } unless search_except.empty?
 
     issue_numbers = issues.map { |issue| issue['number'] }.join(', ')
     created_at = issues.map { |issue| issue['created_at'] }.join(', ')
-    updated_at = issues.map { |issue|
-      issue['updated_at'] }.join(', ')
+    updated_at = issues.map { |issue| issue['updated_at'] }.join(', ')
 
     csv << [member_login, member_name, 'No', 'No', issue_numbers, created_at, updated_at, nil]
   end
