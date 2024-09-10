@@ -11,6 +11,7 @@ class App < Sinatra::Base
     org = ENV.fetch('GH_ORGANIZATION')
     repo = ENV.fetch('GH_REPOSITORY')
     team = ENV.fetch('GH_TEAM')
+    @search = ENV.fetch('GH_REPOSITORY_SEARCH')
     @team_url = "https://github.com/orgs/#{org}/teams/#{team}"
     csv_content = CSV.read(CSV_PATH, headers: true)
     @total_count = csv_content.size

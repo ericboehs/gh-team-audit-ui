@@ -106,6 +106,7 @@
 
       document.querySelectorAll('a[tooltip]').forEach(link => {
         const tooltipText = link.getAttribute('tooltip');
+        if (!tooltipText) return;
         const tooltipSpan = document.createElement('span');
         tooltipSpan.classList.add('tooltiptext');
         tooltipSpan.innerText = tooltipText;
@@ -479,6 +480,16 @@
 
       // Handle keypress to open and close the modal
       document.addEventListener('keydown', (event) => {
+        if (!event.ctrlKey && event.key === '/') {
+          const tagName = document.activeElement.tagName.toLowerCase();
+          const isInputElement = ['input', 'textarea', 'select'].includes(tagName) || document.activeElement.isContentEditable;
+          if (isInputElement) return;
+
+          event.preventDefault();
+          user_search = document.getElementById('user');
+          user_search.focus()
+        }
+
         if (event.ctrlKey && event.key === '/') {
           event.preventDefault();
           const modal = document.getElementById('shortcutModal');
@@ -556,7 +567,7 @@
   <div class="px-4 sm:px-6 lg:px-8">
     <div class="sm:flex sm:items-center">
       <div class="sm:flex-auto">
-        <h1 class="text-base font-semibold leading-6 text-gray-900">Access Review Audit</h1>
+        <h1 class="text-base font-semibold leading-6 text-gray-900">Access Review Audit <%= " - #{@search}" if @search %></h1>
       </div>
       <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
         <!-- left aligned button goes here -->
@@ -601,7 +612,7 @@
           <% else %>
             Showing all 
           <% end %>
-          <a href="<%= @team_url %>" target="_blank" tooltip="<%= "#{@removed_count} removed" if @removed_count > 0 %>" class="bg-stone-50 underline text-blue-800">
+          <a href="<%= @team_url %>" target="_blank" tooltip="<%= "#{@removed_count} removed" if @removed_count > 0 %>" class="hover:bg-stone-50 underline text-blue-800">
             <%= @total_count %> members</a>
         </div>
       </div>
@@ -612,8 +623,14 @@
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mx-auto h-12 w-12">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Zm3.75 11.625a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
           </svg>
-          <h3 class="mt-2 mb-6 text-sm font-medium text-gray-900">No data available</h3>
-          <p class="mx-auto mt-1 text-sm text-gray-500">Run <code class="bg-gray-100 text-gray-800 rounded px-1 py-0.5">ruby fetch_members_of_team.rb</code> to populate the data.</p>
+          <h3 class="mt-2 mb-6 text-sm font-medium text-gray-900">No data found</h3>
+          <p class="mx-auto mt-1 text-sm text-gray-500">
+          <% if params.any? %>
+            Trying <a href="/" class="hover:bg-stone-50 underline text-blue-800">clearing your search filters</a>.
+          <% else %>
+            Run <code class="bg-gray-100 text-gray-800 rounded px-1 py-0.5">ruby fetch_members_of_team.rb</code> to populate the data.
+          <% end %>
+          </p>
         </div>
       </div>
     <% else %>
