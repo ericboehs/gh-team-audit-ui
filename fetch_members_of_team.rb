@@ -126,6 +126,6 @@ CSV.open(ENV.fetch('GH_CSV_NAME', 'members.csv'), 'w') do |csv|
     created_at = issues.map { |issue| issue['created_at'] }.join(', ')
     updated_at = issues.map { |issue| issue['updated_at'] }.join(', ')
 
-    csv << [member_login, member_name, 'No', 'No', issue_numbers, created_at, updated_at, nil]
+    csv << [member_login, member_name, 'No', 'No', issue_numbers, created_at, updated_at, ""]
   end
 end
