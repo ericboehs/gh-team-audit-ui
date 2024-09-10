@@ -1,3 +1,7 @@
+# GitHub Team Auditor
+
+![Main View Screenshot](screenshots/index.png)
+
 To run:
 
 1. Run `cp .env.local.example .env.local`
