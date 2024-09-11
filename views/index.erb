@@ -691,7 +691,7 @@
                     <img class="h-11 w-11 rounded-full ring-2 ring-white transition duration-200 ease-in-out transform hover:scale-150" src="https://avatars.githubusercontent.com/<%= row['GitHub Login'] %>" alt="<%= row['GitHub Login'] %>">
                   </div>
                   <div class="ml-4">
-                    <a class="font-medium text-gray-900 hover:underline" 
+                    <a class="font-medium text-gray-900 hover:underline focus:outline outline-blue-900 outline-2"
                        href="https://github.com/<%= row['GitHub Login'] %>"
                        onfocus="this.parentElement.previousElementSibling.children[0].classList.add('scale-150')"
                        onblur="this.parentElement.previousElementSibling.children[0].classList.remove('scale-150')">
@@ -719,7 +719,7 @@
               <td class="px-3 py-5 text-sm"><span class="highlight-for-copy outline-none" tabindex="0"><%= format_date(row['Created At']) %></span</td>
               <td class="px-3 py-5 text-sm"><span class="highlight-for-copy outline-none" tabindex="0"><%= format_date(row['Updated At']) %></span></td>
               <td class="px-3 py-5 text-sm">
-                <input type="text" class="placeholder-gray-300 border-none bg-transparent focus:bg-white focus:border focus:border-gray-300 rounded px-2 py-1 editable" data-field="Comments" data-login="<%= row['GitHub Login'] %>" placeholder="-" value="<%= row['Comments'] %>">
+                <input type="text" class="placeholder-gray-300 border-none bg-transparent focus:bg-white focus:ring-2 focus:ring-blue-900 focus:outline-none rounded px-2 py-1 editable" data-field="Comments" data-login="<%= row['GitHub Login'] %>" placeholder="-" value="<%= row['Comments'] %>">
               </td>
             </tr>
           <% end %>

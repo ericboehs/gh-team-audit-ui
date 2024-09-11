@@ -88,7 +88,7 @@ class App < Sinatra::Base
     def issue_links(issue_numbers, org, repo)
       issue_numbers.split(', ').map do |issue_number|
         "<a href=\"https://github.com/#{org}/#{repo}/issues/#{issue_number}\" "\
-        "class=\"text-blue-800 hover:underline\" target=\"_blank\">#{issue_number}</a>"
+        "class=\"text-blue-800 focus:outline outline-blue-900 outline-2 hover:underline\" target=\"_blank\">#{issue_number}</a>"
       end.join('<br>')
     end
 
