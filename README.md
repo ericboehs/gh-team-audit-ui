@@ -13,6 +13,8 @@
 - In-place editing (<kbd>Shift</kbd>+<kbd>Enter</kbd>/<kbd>Enter</kbd>/<kbd>Tab</kbd>/<kbd>Shift</kbd>+<kbd>Tab</kbd> to navigate, <kbd>Esc</kbd> to cancel, <kbd>Enter</kbd> to save)
 - **Auto-selects name** when tabbing for easy copying to clipboard (for searching in your company's directory/Slack)
 - **Search GitHub Team for member** by pressing <kbd>Ctrl</kbd>+<kbd>T</kbd>
+- **Merge script** to sync updates from a new members.csv while preserving changes
+- **Revisioning** of members.csv (keeps last ten changes in members.csv-*timestamp*)
 
 ## Running locally
 

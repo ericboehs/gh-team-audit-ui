@@ -5,11 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Access Review Audit</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script src="//unpkg.com/alpinejs" defer></script>
   <style>
-    .editable input, .editable-date input {
-      height: 100%;
-      box-sizing: border-box;
-    }
     .tooltip {
       position: relative;
       display: inline-block;
@@ -38,6 +35,37 @@
     }
   </style>
   <script>
+    function initComponent() {
+      return {
+        open: false,
+        currentVersion: '<%= current_version %>',
+        loadVersions() {
+          fetch('/versions_dropdown')
+            .then(response => response.text())
+            .then(html => { 
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(html, 'text/html');
+              this.currentVersion = doc.querySelector('#current-version').dataset.version;
+              this.$refs.dropdown.innerHTML = doc.querySelector('#dropdown-content').innerHTML;
+              Alpine.initTree(this.$refs.dropdown); 
+            });
+        },
+        init() {
+          // Store the Alpine.js component context
+          const componentContext = this;
+
+          // Define the external function that calls loadVersions
+          window.updateVersions = function() {
+            componentContext.loadVersions();
+          }
+        }
+      };
+    }
+
+    document.addEventListener('alpine:init', () => {
+      Alpine.data('initComponent', initComponent);
+    });
+
     function filterOnChange() {
       const accessValidated = document.getElementById('access-validated').value;
       const removed = document.getElementById('removed').value;
@@ -196,108 +224,99 @@
           },
           body: JSON.stringify({ login: login, field: field, value: newValue })
         }).then(response => response.json()).then(data => {
-          if (data.status !== 'success') {
+          if (!data || data.status !== 'success') {
             alert('Failed to update the CSV file');
+          } else {
+            updateVersions();
           }
         });
       }));
 
-      const makeEditable = (td, inputType = 'text') => {
-        td.setAttribute('tabindex', '0');
-        td.addEventListener('click', function() {
+      const makeEditable = (input, inputType = 'text') => {
+        input.addEventListener('focus', function () {
           const login = this.dataset.login;
           const field = this.dataset.field;
-          const currentValue = this.innerText;
-          const input = document.createElement('input');
-          input.type = inputType;
-          if (inputType === 'date') {
-            input.value = currentValue ? new Date(currentValue).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-          } else if (currentValue.trim() == "-") {
-            input.value = "";
-          } else {
-            input.value = currentValue;
-          }
-          input.classList.add('border', 'border-gray-300', 'rounded', 'px-2', 'py-1');
 
+          let currentValue = input.value;
           let keydownHandled = false;
 
-          const saveAndMoveNext = (direction = 'down') => {
-            const newValue = input.value;
-            td.innerText = inputType === 'date' && newValue ? new Date(newValue).toISOString().split('T')[0] : newValue;
-
-            fetch('/update', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ login: login, field: field, value: newValue })
-            }).then(response => response.json()).then(data => {
-              if (data.status !== 'success') {
-                alert('Failed to update the CSV file');
-              } else {
-                let nextRow;
-                if (direction === 'down') {
-                  nextRow = td.closest('tr').nextElementSibling;
-                } else if (direction === 'up') {
-                  nextRow = td.closest('tr').previousElementSibling;
-                }
-                if (nextRow) {
-                  const nextEditable = nextRow.querySelector(`.editable[data-field="${field}"], .editable-date[data-field="${field}"]`);
-                  if (nextEditable) {
-                    nextEditable.click();
-                  }
-                }
+          const moveNext = (direction = 'down') => {
+            let nextRow;
+            if (direction === 'down') {
+              nextRow = input.closest('tr').nextElementSibling;
+            } else if (direction === 'up') {
+              nextRow = input.closest('tr').previousElementSibling;
+            }
+            if (nextRow) {
+              const nextEditable = nextRow.querySelector(`.editable[data-field="${field}"]`);
+              if (nextEditable) {
+                nextEditable.focus();
               }
-            });
-          };
-
-          const cancelEdit = () => {
-            td.innerText = currentValue;
-            td.focus(); // Return focus to the table cell
-          };
-
-          const handleBlur = () => {
-            if (!keydownHandled) {
-              saveAndMoveNext('stay');
             }
           };
 
-          input.addEventListener('blur', handleBlur);
+          const saveAndMoveNext = (direction = 'down') => {
+            const newValue = input.value;
+            if (newValue !== currentValue) {
+              fetch('/update', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ login: login, field: field, value: newValue })
+              }).then(response => response.json()).then(data => {
+                if (data.status !== 'success') {
+                  alert('Failed to update the CSV file');
+                } else {
+                  currentValue = input.value;
+                  updateVersions();
+                  moveNext(direction);
+                }
+              });
+            } else {
+              moveNext(direction);
+            }
+          };
 
-          input.addEventListener('keydown', function(event) {
+          const cancelEdit = () => {
+            input.value = currentValue;
+          };
+
+          const handleKeydown = (event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault();
               keydownHandled = true;
-              input.removeEventListener('blur', handleBlur);
               saveAndMoveNext('down');
             } else if (event.key === 'Enter' && event.shiftKey) {
               event.preventDefault();
               keydownHandled = true;
-              input.removeEventListener('blur', handleBlur);
               saveAndMoveNext('up');
             } else if (event.key === 'Escape') {
               event.preventDefault();
               keydownHandled = true;
-              input.removeEventListener('blur', handleBlur);
               cancelEdit();
             }
-          });
+          };
 
-          td.innerText = '';
-          td.appendChild(input);
+          input.addEventListener('keydown', handleKeydown);
+
+          input.innerText = '';
           input.focus();
         });
 
-        td.addEventListener('keydown', function(event) {
+        input.addEventListener('keydown', function(event) {
+          const tagName = document.activeElement.tagName.toLowerCase();
+          const isInputElement = ['input', 'textarea', 'select'].includes(tagName) || document.activeElement.isContentEditable;
+          if (isInputElement) return;
+
           if (event.key === 'Enter') {
             event.preventDefault();
-            td.click();
+            input.focus();
           }
         });
       };
 
-      document.querySelectorAll('.editable').forEach(td => makeEditable(td));
-      document.querySelectorAll('.editable-date').forEach(td => makeEditable(td, 'date'));
+      document.querySelectorAll('.editable').forEach(input => makeEditable(input));
 
       const navigateTable = (event) => {
         const focusableSelectors = [
@@ -312,15 +331,6 @@
         ];
 
         let current = document.activeElement.closest('td, th') || document.querySelector('tbody tr td');
-
-        // Check if the focused element is an input, textarea, or any other element where default behavior should be preserved
-        const tagName = document.activeElement.tagName.toLowerCase();
-        const isInputElement = ['input', 'textarea', 'select'].includes(tagName) || document.activeElement.isContentEditable;
-
-
-        if (isInputElement) {
-          return; // Allow default behavior for these elements
-        }
 
         if (event.ctrlKey && (event.key === 'j' || event.key === 'k' || event.key === 'p' || event.key === 'n')) {
           event.preventDefault();
@@ -407,7 +417,7 @@
             const cells = current.closest('tr').querySelectorAll('td, th');
             if (cells.length > 0) {
               const lastCell = cells[cells.length - 1];
-              lastCell.focus();
+              lastCell.children[0].focus();
               setTimeout(() => selectRow(current.closest('tr')), 0); // Highlight the row after focus change
             }
           }
@@ -472,9 +482,20 @@
 
       // Add event listeners to each row for selection
       document.querySelectorAll('tbody tr').forEach(row => {
-        row.addEventListener('click', () => selectRow(row));
-        row.addEventListener('keydown', (event) => {
-          setTimeout(() => selectRow(row), 0); // Highlight the row after focus change
+        // Add listener for row selection when any element inside the row gains focus
+        row.addEventListener('focusin', (event) => {
+          if (!row.contains(document.activeElement)) return; // Ensure the active element is inside the row
+          selectRow(row);
+        });
+
+        // Add listener for when focus moves out of the current row
+        row.addEventListener('focusout', (event) => {
+          // Delay to ensure the focus has moved to a new element outside the row
+          setTimeout(() => {
+            if (!row.contains(document.activeElement)) {
+              row.classList.remove('bg-gray-100'); // Remove highlight when focus has left the row
+            }
+          }, 0);
         });
       });
 
@@ -487,7 +508,7 @@
 
           event.preventDefault();
           user_search = document.getElementById('user');
-          user_search.focus()
+          user_search.focus();
         }
 
         if (event.ctrlKey && event.key === '/') {
@@ -570,7 +591,18 @@
         <h1 class="text-base font-semibold leading-6 text-gray-900">Access Review Audit <%= " - #{@search}" if @search %></h1>
       </div>
       <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
-        <!-- left aligned button goes here -->
+        <div class="relative inline-block text-left" x-data="initComponent" @click.away="open = false">
+          <button @click="open = !open; if (open) loadVersions();" type="button" class="inline-flex w-full justify-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50" id="menu-button" aria-expanded="true" aria-haspopup="true">
+            Version #<span x-text="currentVersion"><%= current_version %></span>
+            <svg class="ml-1 -mr-1 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+            </svg>
+          </button>
+
+          <div id="versions-dropdown-container" x-ref="dropdown">
+            <!-- The dropdown content will be dynamically loaded here -->
+          </div>
+        </div>
       </div>
     </div>
     <div class="mt-4 flex flex-wrap space-x-4">
@@ -686,8 +718,8 @@
               <td class="px-3 py-5 text-sm"><span class="outline-none"><%= issue_links(row['Issue Numbers'], org, repo) %></span</td>
               <td class="px-3 py-5 text-sm"><span class="highlight-for-copy outline-none" tabindex="0"><%= format_date(row['Created At']) %></span</td>
               <td class="px-3 py-5 text-sm"><span class="highlight-for-copy outline-none" tabindex="0"><%= format_date(row['Updated At']) %></span></td>
-              <td class="px-3 py-5 text-sm editable" data-field="Comments" data-login="<%= row['GitHub Login'] %>">
-                <div style="min-width: 250px;" tabindex="0"><%= !row['Comments']&.empty? ? row['Comments'] : '-' %></div>
+              <td class="px-3 py-5 text-sm">
+                <input type="text" class="placeholder-gray-300 border-none bg-transparent focus:bg-white focus:border focus:border-gray-300 rounded px-2 py-1 editable" data-field="Comments" data-login="<%= row['GitHub Login'] %>" placeholder="-" value="<%= row['Comments'] %>">
               </td>
             </tr>
           <% end %>
@@ -698,7 +730,7 @@
   </div>
 
   <!-- The Modal -->
-  <div id="shortcutModal" class="relative z-10 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div id="shortcutModal" class="relative z-40 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <!-- Background backdrop -->
     <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
 

@@ -39,19 +39,15 @@ class App < Sinatra::Base
   post '/update' do
     content_type :json
     data = JSON.parse(request.body.read)
+    puts data
     csv_content = CSV.read(CSV_PATH, headers: true)
 
     csv_content.each do |row|
       row[data['field']] = data['value'] if row['GitHub Login'] == data['login']
     end
 
-    # Backup the current CSV file before writing to it
-    backup_path = "#{CSV_PATH}-#{Time.now.utc.iso8601}"
-    FileUtils.cp(CSV_PATH, backup_path)
-
-    # Remove old backups, keeping only the last 10
-    backups = Dir.glob("#{CSV_PATH}-*").sort_by { |f| File.mtime(f) }
-    FileUtils.rm(backups[0...-10]) if backups.size > 10
+    make_backup
+    prune_backups
 
     CSV.open(CSV_PATH, 'w', write_headers: true, headers: csv_content.headers) do |csv|
       csv_content.each do |row|
@@ -60,6 +56,24 @@ class App < Sinatra::Base
     end
 
     { status: 'success' }.to_json
+  end
+
+  get '/revert' do
+    version = params['v']
+    halt 400, '<h1>Error: Version parameter is required</h1>' if version.nil?
+
+    revert_path = "#{CSV_PATH}-v#{version}"
+    halt 404, '<h1>Error: Version not found</h1>' unless File.exist?(revert_path)
+
+    make_backup
+
+    FileUtils.cp(revert_path, CSV_PATH)
+
+    redirect '/'
+  end
+
+  get '/versions_dropdown' do
+    erb :_versions_dropdown, locals: { versions: versions, current_version: current_version }, layout: false
   end
 
   helpers do
@@ -76,6 +90,32 @@ class App < Sinatra::Base
         "<a href=\"https://github.com/#{org}/#{repo}/issues/#{issue_number}\" "\
         "class=\"text-blue-800 hover:underline\" target=\"_blank\">#{issue_number}</a>"
       end.join('<br>')
+    end
+
+    def backups
+      @backups ||= Dir.glob("#{CSV_PATH}-v*")
+    end
+
+    def versions
+      @versions ||= backups.map { |f| f.match(/-v(\d+)$/)[1].to_i }.sort
+    end
+
+    def current_version
+      @current_version ||= versions.empty? ? 1 : versions.max + 1
+    end
+
+    def make_backup
+      backup_path = "#{CSV_PATH}-v#{current_version}"
+      FileUtils.cp(CSV_PATH, backup_path)
+    end
+
+    def prune_backups
+      if backups.size >= 10
+        versions_to_delete = versions[0...-10]
+        versions_to_delete.each do |version|
+          FileUtils.rm("#{CSV_PATH}-v#{version}")
+        end
+      end
     end
   end
 end
